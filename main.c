@@ -3,11 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BYTES_PER_LINE 16
+
 // argc => argument count
 // *argv[] => argument vector (array of char * pointers)
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        // argv[0] is always the name (or path) of the program being executed
+        // argv[0] is always the name of the executable
         fprintf(stderr, "USAGE: %s <filename>\n", argv[0]);
         exit(1);
     }
@@ -26,7 +28,10 @@ int main(int argc, char *argv[]) {
     }
 
     char ch;
-    // needs to initialize to 0
+    char ascii_line[BYTES_PER_LINE];
+
+    // need to initialize to 0
+    int ascii_line_count = 0;
     int byte_count = 0;
 
     // acquire an exclusive lock on file
@@ -34,9 +39,21 @@ int main(int argc, char *argv[]) {
     flockfile(file);
 
     while ((ch = getc_unlocked(file)) != EOF) {
-        // how many octets per line (bytes per line)
-        if (byte_count % 8 == 0) {
-            printf("\n%08x: ", byte_count);
+        if (byte_count % BYTES_PER_LINE == 0) {
+            if (ascii_line_count > 0) {
+                // null-terminate array (string) first
+                ascii_line[ascii_line_count - 1] = '\0';
+
+                // print current contents of buffer
+                printf(" %s\n", ascii_line);
+
+                // reset the buffer and count
+                memset(ascii_line, 0, sizeof(ascii_line));
+                ascii_line_count = 0;
+            }
+
+            // print offset
+            printf("%08x: ", byte_count);
         }
 
         // prints "XXXX XXXX ..." where each group of "XXXX" contains 2 groups
@@ -47,10 +64,26 @@ int main(int argc, char *argv[]) {
             printf("%02x ", ch);
         }
 
+        if (ch >= 32 && ch <= 126) {
+            // store the byte in the array
+            ascii_line[ascii_line_count] = ch;
+        } else {
+            // non-printable characters replaced by '.'
+            ascii_line[ascii_line_count] = '.';
+        }
+
+        ascii_line_count++;
         byte_count++;
     }
 
-    printf("\n");
+    if (ascii_line_count > 0) {
+        ascii_line[ascii_line_count - 1] = '\0';
+
+        int padding = (BYTES_PER_LINE - ascii_line_count) * 3 - 2;
+
+        // print the remaining part of buffer with padding
+        printf("%*s\n", padding, ascii_line);
+    }
 
     // release the lock on file
     funlockfile(file);

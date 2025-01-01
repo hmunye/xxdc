@@ -1,9 +1,14 @@
-.PHONY: build exec clean run
+.PHONY: build build-dbg exec clean run
 
 build:
-	gcc -o xxdc main.c
+	gcc -Wall -Wextra -o xxdc main.c
+
+build-dbg:
+	gcc -g -Wall -Wextra -o xxdc-dbg main.c
+
 exec:
 	./xxdc test.txt
+
 clean:
 	@rm -rf ./xxdc
 
