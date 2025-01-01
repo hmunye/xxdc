@@ -3,7 +3,7 @@
 build:
 	gcc -o xxdc main.c
 exec:
-	./xxdc
+	./xxdc test.txt
 clean:
 	@rm -rf ./xxdc
 
