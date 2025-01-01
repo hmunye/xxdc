@@ -1,0 +1,4 @@
+Reading a file in C involves opening the file using appropriate system calls or
+library functions, then reading its contents into memory, and finally closing 
+the file when done.
+
