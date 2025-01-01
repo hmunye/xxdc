@@ -25,15 +25,32 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    char buffer;
+    char ch;
+    // needs to initialize to 0
+    int byte_count = 0;
 
     // acquire an exclusive lock on file
     // avoid the overhead of locking the object for each operation
     flockfile(file);
 
-    while ((buffer = getc_unlocked(file)) != EOF) {
-        printf("%c", buffer);
+    while ((ch = getc_unlocked(file)) != EOF) {
+        // how many octets per line (bytes per line)
+        if (byte_count % 8 == 0) {
+            printf("\n%08x: ", byte_count);
+        }
+
+        // prints "XXXX XXXX ..." where each group of "XXXX" contains 2 groups
+        // of 2 byte hex values
+        if (byte_count % 2 == 0) {
+            printf("%02x", ch);
+        } else {
+            printf("%02x ", ch);
+        }
+
+        byte_count++;
     }
+
+    printf("\n");
 
     // release the lock on file
     funlockfile(file);
