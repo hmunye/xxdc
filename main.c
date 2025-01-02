@@ -16,7 +16,9 @@ int main(int argc, char *argv[]) {
 
     // `fopen()` opens the file whose name is the string pointed to
     // by path and associates a stream with it. Opening with `r` (read) mode.
-    FILE *file = fopen(argv[1], "r");  // return a FILE pointer, otherwise NULL
+    //
+    // returns a FILE pointer, otherwise NULL
+    FILE *file = fopen(argv[1], "r");
 
     // `file` will have a memory address of 0x0 if the file could not be found
     if (file == NULL) {
@@ -27,62 +29,39 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    char ch;
-    char ascii_line[BYTES_PER_LINE];
+    char buffer[BYTES_PER_LINE];
+    size_t bytes_read = 0;
 
-    // need to initialize to 0
-    int ascii_line_count = 0;
-    int byte_count = 0;
+    int byte_offset = 0;
 
     // acquire an exclusive lock on file
     // avoid the overhead of locking the object for each operation
     flockfile(file);
 
-    while ((ch = getc_unlocked(file)) != EOF) {
-        if (byte_count % BYTES_PER_LINE == 0) {
-            if (ascii_line_count > 0) {
-                // null-terminate array (string) first
-                ascii_line[ascii_line_count - 1] = '\0';
+    // using fread() to read BYTES_PER_LINE chunks at a time from file
+    while ((bytes_read = fread(buffer, sizeof(char), BYTES_PER_LINE, file)) >
+           0) {
+        printf("%08x: ", byte_offset);
 
-                // print current contents of buffer
-                printf(" %s\n", ascii_line);
-
-                // reset the buffer and count
-                memset(ascii_line, 0, sizeof(ascii_line));
-                ascii_line_count = 0;
+        for (size_t i = 0; i < bytes_read; i++) {
+            if (i % 2 == 0) {
+                printf(" ");
             }
 
-            // print offset
-            printf("%08x: ", byte_count);
+            printf("%02x", (unsigned char)buffer[i]);
         }
 
-        // prints "XXXX XXXX ..." where each group of "XXXX" contains 2 groups
-        // of 2 byte hex values
-        if (byte_count % 2 == 0) {
-            printf("%02x", ch);
-        } else {
-            printf("%02x ", ch);
-        }
+        printf("\n");
 
-        if (ch >= 32 && ch <= 126) {
-            // store the byte in the array
-            ascii_line[ascii_line_count] = ch;
-        } else {
-            // non-printable characters replaced by '.'
-            ascii_line[ascii_line_count] = '.';
-        }
-
-        ascii_line_count++;
-        byte_count++;
+        byte_offset += bytes_read;
     }
 
-    if (ascii_line_count > 0) {
-        ascii_line[ascii_line_count - 1] = '\0';
-
-        int padding = (BYTES_PER_LINE - ascii_line_count) * 3 - 2;
-
-        // print the remaining part of buffer with padding
-        printf("%*s\n", padding, ascii_line);
+    // fread() does not distinguish between end-of-file and error;
+    // must use feof() and ferror() to determine which occurred
+    if (ferror(file)) {
+        fprintf(stderr, "ERROR: failed to read file %s: %s\n", argv[1],
+                strerror(errno));
+        exit(1);
     }
 
     // release the lock on file
