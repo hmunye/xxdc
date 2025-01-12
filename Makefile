@@ -7,7 +7,7 @@ build-dbg:
 	gcc -g -Wall -Wextra -o xxdc-dbg main.c
 
 exec:
-	./xxdc test.txt
+	./xxdc test.c
 
 clean:
 	@rm -rf ./xxdc
